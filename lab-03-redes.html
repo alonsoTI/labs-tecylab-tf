@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio de Redes Virtuales en Azure con Terraform</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        code {
+            background: #e8e8e8;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 1.1em;
+            color: #000;
+        }
+        pre {
+            background: #272822;
+            color: #f8f8f2;
+            padding: 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        pre code {
+            color: #f8f8f2;
+            background: none;
+        }
+        .steps {
+            list-style: decimal inside;
+        }
+        .steps li {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Laboratorio de Redes Virtuales en Azure con Terraform</h1>
+        <p>En este laboratorio aprenderás a configurar una red virtual, subredes y un grupo de seguridad de red (NSG) en Azure utilizando Terraform.</p>
+
+        <h2>Prerrequisitos</h2>
+        <ul>
+            <li>Tener una cuenta de Azure activa.</li>
+            <li>Terraform instalado (<a href="https://www.terraform.io/downloads.html" target="_blank">Descargar Terraform</a>).</li>
+            <li>Azure CLI instalado (<a href="https://docs.microsoft.com/en-us/cli/azure/install-azure-cli" target="_blank">Descargar Azure CLI</a>).</li>
+        </ul>
+
+        <h2>Obtener Credenciales de Azure</h2>
+        <p>Sigue estos pasos para obtener las credenciales necesarias para usar Terraform con Azure:</p>
+        <ol class="steps">
+            <li><strong>Inicia sesión en Azure CLI:</strong><br>
+                <pre><code>az login</code></pre>
+            </li>
+            <li><strong>Obtén tu ID de suscripción:</strong><br>
+                <pre><code>az account show --query id --output tsv</code></pre>
+            </li>
+            <li><strong>Crea un Service Principal:</strong><br>
+                <pre><code>az ad sp create-for-rbac --name "terraform-lab" --role Contributor --scopes /subscriptions/{subscription-id}</code></pre>
+                <p>Reemplaza <code>{subscription-id}</code> con el valor de tu ID de suscripción obtenido en el paso anterior.</p>
+                <p>El comando generará un resultado similar a este:</p>
+                <pre><code>{
+  "appId": "tu-client-id",
+  "displayName": "terraform-lab",
+  "password": "tu-client-secret",
+  "tenant": "tu-tenant-id"
+}</code></pre>
+                <p>Guarda los valores de <code>appId</code>, <code>password</code> y <code>tenant</code> para usarlos en tu archivo de configuración de Terraform.</p>
+            </li>
+        </ol>
+
+        <h2>Pasos</h2>
+        <ol class="steps">
+            <li><strong>Crear un directorio de trabajo:</strong><br>
+                <pre><code>mkdir terraform-azure-network<br>cd terraform-azure-network</code></pre>
+            </li>
+            <li><strong>Crear el archivo de configuración principal de Terraform:</strong><br>
+                <pre><code>touch main.tf<br>nano main.tf</code></pre>
+                <p>Agrega el siguiente contenido a <code>main.tf</code>:</p>
+                <pre><code>
+provider "azurerm" {
+  features {}
+
+  subscription_id = "tu-subscription-id"
+  client_id       = "tu-client-id"
+  client_secret   = "tu-client-secret"
+  tenant_id       = "tu-tenant-id"
+}
+
+resource "azurerm_resource_group" "network_rg" {
+  name     = "network-lab-resources"
+  location = "East US"
+}
+
+resource "azurerm_virtual_network" "vnet" {
+  name                = "lab-vnet"
+  address_space       = ["10.1.0.0/16"]
+  location            = azurerm_resource_group.network_rg.location
+  resource_group_name = azurerm_resource_group.network_rg.name
+}
+
+resource "azurerm_subnet" "subnet1" {
+  name                 = "subnet1"
+  resource_group_name  = azurerm_resource_group.network_rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = ["10.1.1.0/24"]
+}
+
+resource "azurerm_subnet" "subnet2" {
+  name                 = "subnet2"
+  resource_group_name  = azurerm_resource_group.network_rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = ["10.1.2.0/24"]
+}
+
+resource "azurerm_network_security_group" "nsg" {
+  name                = "lab-nsg"
+  location            = azurerm_resource_group.network_rg.location
+  resource_group_name = azurerm_resource_group.network_rg.name
+}
+
+resource "azurerm_network_security_rule" "allow_ssh" {
+  name                        = "allow-ssh"
+  priority                    = 100
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "22"
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  network_security_group_name = azurerm_network_security_group.nsg.name
+}
+
+resource "azurerm_subnet_network_security_group_association" "subnet1_nsg" {
+  subnet_id                 = azurerm_subnet.subnet1.id
+  network_security_group_id = azurerm_network_security_group.nsg.id
+}
+                </code></pre>
+            </li>
+            <li><strong>Inicializar y aplicar la configuración de Terraform:</strong><br>
+                <pre><code>terraform init<br>terraform apply</code></pre>
+                <p>Confirma la ejecución para que Terraform cree la infraestructura.</p>
+            </li>
+        </ol>
+
+        <h2>Resultado</h2>
+        <p>Al finalizar, tendrás una red virtual con dos subredes y un Network Security Group asociado a una de ellas, configurado para permitir el tráfico SSH.</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio Avanzado de Terraform con Azure</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        code {
+            background: #e8e8e8;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 1.1em;
+            color: #000;
+        }
+        pre {
+            background: #272822;
+            color: #f8f8f2;
+            padding: 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        pre code {
+            color: #f8f8f2;
+            background: none;
+        }
+        .steps {
+            list-style: decimal inside;
+        }
+        .steps li {
+            margin-bottom: 15px;
+        }
+        .steps li strong {
+            background: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Laboratorio Avanzado de Terraform con Azure</h1>
+        <p>Sigue estos pasos para desplegar máquinas virtuales y usar módulos en Azure utilizando Terraform.</p>
+
+        <h2>Prerrequisitos</h2>
+        <ul>
+            <li>Tener una cuenta de Azure.</li>
+            <li>Tener instalado Terraform (<a href="https://www.terraform.io/downloads.html" target="_blank">Descargar Terraform</a>).</li>
+            <li>Tener instalado Azure CLI (<a href="https://docs.microsoft.com/en-us/cli/azure/install-azure-cli" target="_blank">Descargar Azure CLI</a>).</li>
+        </ul>
+
+        <h2>Obtener Credenciales de Azure</h2>
+        <p>Para poder utilizar Terraform con Azure, necesitas obtener tus credenciales de Azure. Sigue estos pasos para obtener el <code>subscriptionId</code>, <code>clientId</code>, <code>clientSecret</code> y <code>tenantId</code>:</p>
+        <ol class="steps">
+            <li><strong>Iniciar sesión en Azure:</strong> <br>
+                <pre><code>az login</code></pre>
+            </li>
+            <li><strong>Obtener el ID de suscripción:</strong> <br>
+                <pre><code>az account show --query id --output tsv</code></pre>
+            </li>
+            <li><strong>Crear un nuevo servicio principal:</strong> <br>
+                <pre><code>az ad sp create-for-rbac --name "nombre-del-servicio" --role Contributor --scopes /subscriptions/{subscription-id}</code></pre>
+                <p>Guarda el <code>appId</code> (clientId), <code>password</code> (clientSecret) y <code>tenant</code> (tenantId) que se generan.</p>
+            </li>
+        </ol>
+
+        <h2>Pasos</h2>
+        <ol class="steps">
+            <li><strong>Crear un directorio de trabajo:</strong> <br>
+                <pre><code>mkdir terraform-azure-vm-demo<br>cd terraform-azure-vm-demo</code></pre>
+            </li>
+            <li><strong>Crear el archivo de configuración principal de Terraform:</strong> <br>
+                <pre><code>touch main.tf<br>nano main.tf</code></pre>
+                <p>Agrega el siguiente contenido a <code>main.tf</code>:</p>
+                <pre><code>
+provider "azurerm" {
+  features {}
+
+  subscription_id = "tu_subscription_id"
+  client_id       = "tu_client_id"
+  client_secret   = "tu_client_secret"
+  tenant_id       = "tu_tenant_id"
+}
+
+resource "azurerm_resource_group" "main" {
+  name     = "example-resources"
+  location = "East US"
+}
+
+module "network" {
+  source = "./modules/network"
+  resource_group_name = azurerm_resource_group.main.name
+  location = azurerm_resource_group.main.location
+}
+
+module "vm" {
+  source = "./modules/vm"
+  resource_group_name = azurerm_resource_group.main.name
+  location = azurerm_resource_group.main.location
+  network_interface_ids = [module.network.network_interface_id]
+}
+                </code></pre>
+            </li>
+            <li><strong>Crear el módulo de red:</strong> <br>
+                <pre><code>mkdir -p modules/network<br>touch modules/network/main.tf<br>nano modules/network/main.tf</code></pre>
+                <p>Agrega el siguiente contenido a <code>modules/network/main.tf</code>:</p>
+                <pre><code>
+variable "resource_group_name" {
+  type = string
+}
+
+variable "location" {
+  type = string
+}
+
+resource "azurerm_virtual_network" "main" {
+  name                = "example-vnet"
+  address_space       = ["10.0.0.0/16"]
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_subnet" "main" {
+  name                 = "example-subnet"
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = ["10.0.2.0/24"]
+}
+
+resource "azurerm_network_interface" "main" {
+  name                = "example-nic"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.main.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+output "network_interface_id" {
+  value = azurerm_network_interface.main.id
+}
+                </code></pre>
+            </li>
+            <li><strong>Crear el módulo de máquina virtual:</strong> <br>
+                <pre><code>mkdir -p modules/vm<br>touch modules/vm/main.tf<br>nano modules/vm/main.tf</code></pre>
+                <p>Agrega el siguiente contenido a <code>modules/vm/main.tf</code>:</p>
+                <pre><code>
+variable "resource_group_name" {
+  type = string
+}
+
+variable "location" {
+  type = string
+}
+
+variable "network_interface_ids" {
+  type = list(string)
+}
+
+resource "azurerm_windows_virtual_machine" "main" {
+  name                  = "example-vm"
+  location              = var.location
+  resource_group_name   = var.resource_group_name
+  network_interface_ids = var.network_interface_ids
+  size                  = "Standard_DS1_v2"
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2019-Datacenter"
+    version   = "latest"
+  }
+
+  admin_username = "azureuser"
+  admin_password = "P@ssw0rd1234!"
+}
+                </code></pre>
+            </li>
+            <li><strong>Inicializar y aplicar la configuración de Terraform:</strong> <br>
+                <pre><code>terraform init<br>terraform apply</code></pre>
+                <p>Confirma la ejecución para que Terraform despliegue la infraestructura en Azure.</p>
+            </li>
+        </ol>
+
+        <h2>Consumir los módulos en otro archivo de Terraform</h2>
+        <ol class="steps">
+            <li><strong>Crear un nuevo archivo de configuración para reutilizar los módulos:</strong> <br>
+                <pre><code>touch nuevo_main.tf<br>nano nuevo_main.tf</code></pre>
+                <p>Agrega el siguiente contenido a <code>nuevo_main.tf</code>:</p>
+                <pre><code>
+provider "azurerm" {
+  features {}
+
+  subscription_id = "tu_subscription_id"
+  client_id       = "tu_client_id"
+  client_secret   = "tu_client_secret"
+  tenant_id       = "tu_tenant_id"
+}
+
+resource "azurerm_resource_group" "main" {
+  name     = "example-resources"
+  location = "East US"
+}
+
+module "network" {
+  source = "./modules/network"
+  resource_group_name = azurerm_resource_group.main.name
+  location = azurerm_resource_group.main.location
+}
+
+module "vm" {
+  source = "./modules/vm"
+  resource_group_name = azurerm_resource_group.main.name
+  location = azurerm_resource_group.main.location
+  network_interface_ids = [module.network.network_interface_id]
+}
+                </code></pre>
+            </li>
+            <li><strong>Inicializar y aplicar la configuración:</strong> <br>
+                <pre><code>terraform init<br>terraform apply</code></pre>
+                <p>Este archivo reutilizará los módulos creados previamente para crear una red y una VM en Azure.</p>
+            </li>
+        </ol>
+    </div>
+</body>
+</html>

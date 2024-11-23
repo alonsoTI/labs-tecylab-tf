@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio de Azure SQL con Terraform y Variables</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        code {
+            background: #e8e8e8;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 1.1em;
+            color: #000;
+        }
+        pre {
+            background: #272822;
+            color: #f8f8f2;
+            padding: 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        pre code {
+            color: #f8f8f2;
+            background: none;
+        }
+        .steps {
+            list-style: decimal inside;
+        }
+        .steps li {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Laboratorio de Azure SQL con Terraform y Variables</h1>
+        <p>En este laboratorio, aprenderás a crear un servidor Azure SQL y una base de datos asociada utilizando Terraform con un enfoque basado en variables para facilitar la configuración.</p>
+
+        <h2>Prerrequisitos</h2>
+        <ul>
+            <li>Cuenta de Azure activa.</li>
+            <li>Terraform instalado (<a href="https://www.terraform.io/downloads.html" target="_blank">Descargar Terraform</a>).</li>
+            <li>Azure CLI instalado (<a href="https://docs.microsoft.com/en-us/cli/azure/install-azure-cli" target="_blank">Descargar Azure CLI</a>).</li>
+        </ul>
+
+        <h2>Obtener Credenciales de Azure</h2>
+        <ol class="steps">
+            <li><strong>Iniciar sesión en Azure:</strong><br>
+                <pre><code>az login</code></pre>
+            </li>
+            <li><strong>Obtener el ID de suscripción:</strong><br>
+                <pre><code>az account show --query id --output tsv</code></pre>
+            </li>
+            <li><strong>Crear un nuevo Service Principal:</strong><br>
+                <pre><code>az ad sp create-for-rbac --name "nombre-del-servicio" --role Contributor --scopes /subscriptions/{subscription-id}</code></pre>
+                <p>Guarda el <code>appId</code> (clientId), <code>password</code> (clientSecret) y <code>tenant</code> (tenantId) generados.</p>
+            </li>
+        </ol>
+
+        <h2>Pasos</h2>
+        <ol class="steps">
+            <li><strong>Crear un directorio de trabajo:</strong><br>
+                <pre><code>mkdir terraform-azure-sql<br>cd terraform-azure-sql</code></pre>
+            </li>
+            <li><strong>Crear archivos de Terraform:</strong><br>
+                <ul>
+                    <li><code>main.tf</code>: Define los recursos principales.</li>
+                    <li><code>variables.tf</code>: Declara las variables.</li>
+                    <li><code>terraform.tfvars</code>: Define los valores de las variables.</li>
+                </ul>
+            </li>
+            <li><strong>Agregar contenido a <code>main.tf</code>:</strong>
+                <pre><code>
+                  provider "azurerm" {
+                    features {}
+                    subscription_id = var.subscription_id
+                    client_id       = var.client_id
+                    client_secret   = var.client_secret
+                    tenant_id       = var.tenant_id
+                  }
+                  
+                  resource "azurerm_resource_group" "sql_rg" {
+                    name     = var.resource_group_name
+                    location = var.location
+                  }
+                  
+                  resource "azurerm_mssql_server" "sql_server" {
+                    name                         = var.sql_server_name
+                    resource_group_name          = azurerm_resource_group.sql_rg.name
+                    location                     = azurerm_resource_group.sql_rg.location
+                    version                      = "12.0"
+                    administrator_login          = var.admin_username
+                    administrator_login_password = var.admin_password
+                  }
+                  
+                  resource "azurerm_mssql_database" "sql_database" {
+                    name                = var.sql_database_name
+                    server_id = azurerm_mssql_server.sql_server.id
+                    sku_name            = var.sql_sku_name
+                  }
+                </code></pre>
+            </li>
+            <li><strong>Agregar contenido a <code>variables.tf</code>:</strong>
+                <pre><code>
+variable "subscription_id" {}
+variable "client_id" {}
+variable "client_secret" {}
+variable "tenant_id" {}
+
+variable "resource_group_name" {
+  default = "sql-lab-resources"
+}
+
+variable "location" {
+  default = "East US"
+}
+
+variable "sql_server_name" {
+  default = "examplesqlserver"
+}
+
+variable "admin_username" {
+  default = "sqladminuser"
+}
+
+variable "admin_password" {
+  default = "StrongP@ssw0rd!"
+}
+
+variable "sql_database_name" {
+  default = "exampledb"
+}
+
+variable "sql_sku_name" {
+  default = "Basic"
+}
+                </code></pre>
+            </li>
+            <li><strong>Agregar contenido a <code>terraform.tfvars</code>:</strong>
+                <pre><code>
+subscription_id = "tu-subscription-id"
+client_id       = "tu-client-id"
+client_secret   = "tu-client-secret"
+tenant_id       = "tu-tenant-id"
+                </code></pre>
+            </li>
+            <li><strong>Inicializar y aplicar la configuración:</strong><br>
+                <pre><code>terraform init<br>terraform apply</code></pre>
+                <p>Confirma la ejecución para que Terraform cree los recursos en Azure.</p>
+            </li>
+        </ol>
+
+        <h2>Resultado</h2>
+        <p>Al finalizar, tendrás:</p>
+        <ul>
+            <li>Un servidor Azure SQL configurado con nombre de administrador y contraseña.</li>
+            <li>Una base de datos asociada al servidor.</li>
+        </ul>
+    </div>
+</body>
+</html>

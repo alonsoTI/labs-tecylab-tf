@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio de Almacenamiento en Azure con Terraform y Variables</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        code {
+            background: #e8e8e8;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 1.1em;
+            color: #000;
+        }
+        pre {
+            background: #272822;
+            color: #f8f8f2;
+            padding: 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        pre code {
+            color: #f8f8f2;
+            background: none;
+        }
+        .steps {
+            list-style: decimal inside;
+        }
+        .steps li {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Laboratorio de Almacenamiento en Azure con Terraform y Variables</h1>
+        <p>Este laboratorio muestra cómo crear y gestionar una cuenta de almacenamiento en Azure con Terraform, incluyendo Blob Storage, File Shares y Discos Virtuales, usando variables para una configuración más dinámica.</p>
+
+        <h2>Prerrequisitos</h2>
+        <ul>
+            <li>Cuenta de Azure activa.</li>
+            <li>Terraform instalado (<a href="https://www.terraform.io/downloads.html" target="_blank">Descargar Terraform</a>).</li>
+            <li>Azure CLI instalado (<a href="https://docs.microsoft.com/en-us/cli/azure/install-azure-cli" target="_blank">Descargar Azure CLI</a>).</li>
+        </ul>
+
+        <h2>Obtener Credenciales de Azure</h2>
+        <ol class="steps">
+            <li><strong>Iniciar sesión en Azure:</strong><br>
+                <pre><code>az login</code></pre>
+            </li>
+            <li><strong>Obtener el ID de suscripción:</strong><br>
+                <pre><code>az account show --query id --output tsv</code></pre>
+            </li>
+            <li><strong>Crear un nuevo Service Principal:</strong><br>
+                <pre><code>az ad sp create-for-rbac --name "nombre-del-servicio" --role Contributor --scopes /subscriptions/{subscription-id}</code></pre>
+                <p>Guarda el <code>appId</code> (clientId), <code>password</code> (clientSecret) y <code>tenant</code> (tenantId) generados.</p>
+            </li>
+        </ol>
+
+        <h2>Pasos</h2>
+        <ol class="steps">
+            <li><strong>Crear un directorio de trabajo:</strong><br>
+                <pre><code>mkdir terraform-azure-storage<br>cd terraform-azure-storage</code></pre>
+            </li>
+            <li><strong>Crear archivos de Terraform:</strong><br>
+                <ul>
+                    <li><code>main.tf</code>: Define los recursos principales.</li>
+                    <li><code>variables.tf</code>: Declara las variables.</li>
+                    <li><code>terraform.tfvars</code>: Define los valores de las variables.</li>
+                </ul>
+            </li>
+            <li><strong>Agregar contenido a <code>main.tf</code>:</strong>
+                <pre><code>
+provider "azurerm" {
+  features {}
+  subscription_id = var.subscription_id
+  client_id       = var.client_id
+  client_secret   = var.client_secret
+  tenant_id       = var.tenant_id
+}
+
+resource "azurerm_resource_group" "storage_rg" {
+  name     = var.resource_group_name
+  location = var.location
+}
+
+resource "azurerm_storage_account" "storage_account" {
+  name                     = var.storage_account_name
+  resource_group_name      = azurerm_resource_group.storage_rg.name
+  location                 = azurerm_resource_group.storage_rg.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+resource "azurerm_storage_container" "blob_container" {
+  name                  = var.blob_container_name
+  storage_account_name  = azurerm_storage_account.storage_account.name
+  container_access_type = "private"
+}
+
+resource "azurerm_storage_share" "file_share" {
+  name                 = var.file_share_name
+  storage_account_name = azurerm_storage_account.storage_account.name
+  quota                = var.file_share_quota
+}
+
+resource "azurerm_managed_disk" "data_disk" {
+  name                 = var.disk_name
+  location             = azurerm_resource_group.storage_rg.location
+  resource_group_name  = azurerm_resource_group.storage_rg.name
+  storage_account_type = "Standard_LRS"
+  disk_size_gb         = var.disk_size
+}
+
+output "storage_account_name" {
+  value = azurerm_storage_account.storage_account.name
+}
+
+output "blob_container_name" {
+  value = azurerm_storage_container.blob_container.name
+}
+
+output "file_share_name" {
+  value = azurerm_storage_share.file_share.name
+}
+
+output "data_disk_name" {
+  value = azurerm_managed_disk.data_disk.name
+}
+                </code></pre>
+            </li>
+            <li><strong>Agregar contenido a <code>variables.tf</code>:</strong>
+                <pre><code>
+variable "subscription_id" {}
+variable "client_id" {}
+variable "client_secret" {}
+variable "tenant_id" {}
+
+variable "resource_group_name" {
+  default = "storage-lab-resources"
+}
+
+variable "location" {
+  default = "East US"
+}
+
+variable "storage_account_name" {
+  default = "examplestorageacct"
+}
+
+variable "blob_container_name" {
+  default = "blob-container"
+}
+
+variable "file_share_name" {
+  default = "examplefileshare"
+}
+
+variable "file_share_quota" {
+  default = 10
+}
+
+variable "disk_name" {
+  default = "exampledatadisk"
+}
+
+variable "disk_size" {
+  default = 32
+}
+                </code></pre>
+            </li>
+            <li><strong>Agregar contenido a <code>terraform.tfvars</code>:</strong>
+                <pre><code>
+subscription_id = "tu-subscription-id"
+client_id       = "tu-client-id"
+client_secret   = "tu-client-secret"
+tenant_id       = "tu-tenant-id"
+                </code></pre>
+            </li>
+            <li><strong>Inicializar y aplicar la configuración:</strong><br>
+                <pre><code>terraform init<br>terraform apply</code></pre>
+                <p>Confirma la ejecución para que Terraform cree los recursos en Azure.</p>
+            </li>
+        </ol>
+
+        <h2>Resultado</h2>
+        <p>Al finalizar, tendrás:</p>
+        <ul>
+            <li>Una cuenta de almacenamiento con soporte para Blob Storage y File Shares.</li>
+            <li>Un contenedor de blobs y un file share configurado.</li>
+            <li>Un disco virtual gestionado listo para usar con máquinas virtuales.</li>
+        </ul>
+    </div>
+</body>
+</html>
