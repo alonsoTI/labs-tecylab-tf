@@ -1,11 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laboratorios Terraform</title>
+    <title>Terraform Labs - Tecylab</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2em;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .lab-list {
+            width: 100%;
+            max-width: 800px;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .lab-list li {
+            background: white;
+            margin: 10px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .lab-list li:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .lab-link {
+            text-decoration: none;
+            color: #4CAF50;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .lab-link:hover {
+            text-decoration: underline;
+        }
+
+        .lab-title {
+            font-size: 1.2em;
+        }
+
+        footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            margin-top: 20px;
+        }
+    </style>
 </head>
+
 <body>
-    
+    <header>
+        <h1>Laboratorios de terraform</h1>
+    </header>
+    <main>
+        <ul class="lab-list">
+            <li>
+                <a href="https://alonsoti.github.io/labs-tecylab-tf/lab-01-terraform.html" class="lab-link">
+                    <span class="lab-title">Lab 1: Instalando Terraform y configuración básica</span>
+                    <span>➡️</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://alonsoti.github.io/labs-tecylab-tf/lab-02-modulos.html" class="lab-link">
+                    <span class="lab-title">Lab 2: Uso de módulos y máquinas virtuales</span>
+                    <span>➡️</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://alonsoti.github.io/labs-tecylab-tf/lab-03-redes.html" class="lab-link">
+                    <span class="lab-title">Lab 3: Despliegue de redes virtuales con terraform</span>
+                    <span>➡️</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://alonsoti.github.io/labs-tecylab-tf/lab-04-almacenamiento.html" class="lab-link">
+                    <span class="lab-title">Lab 4: Despliegue de servicios de almacenamiento y uso de variables</span>
+                    <span>➡️</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://alonsoti.github.io/labs-tecylab-tf/lab-05-bd.html" class="lab-link">
+                    <span class="lab-title">Lab 5: Despliegue de bases de datos Azure SQL</span>
+                    <span>➡️</span>
+                </a>
+            </li>
+        </ul>
+    </main>
+    <footer>
+        <p>© 2024 Terraform Training</p>
+    </footer>
 </body>
+
 </html>
