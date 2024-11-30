@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio Consolidado con Módulos: Azure Event Hub, Service Bus y Event Grid</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        h1, h2 { color: #333; }
+        pre { background: #272822; color: #f8f8f2; padding: 10px; border-radius: 8px; overflow-x: auto; }
+        code { color: #f8f8f2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Laboratorio Consolidado: Azure Event Hub, Service Bus y Event Grid</h1>
+        <p>Este laboratorio te guía paso a paso para organizar y crear módulos en Terraform para implementar los servicios.</p>
+        
+        <h2>1. Organización de Carpetas</h2>
+        <p>La estructura del proyecto será la siguiente:</p>
+        <pre><code>
+azure-consolidated-lab/
+├── main.tf
+├── modules/
+│   ├── eventhub/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   ├── servicebus/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   └── eventgrid/
+│       ├── main.tf
+│       ├── variables.tf
+│       └── outputs.tf
+        </code></pre>
+        <p>Cada módulo tendrá un archivo <code>main.tf</code> con la configuración principal, un <code>variables.tf</code> para declarar entradas, y un <code>outputs.tf</code> para exponer salidas.</p>
+
+        <h2>2. Configuración del Archivo Principal (<code>main.tf</code>)</h2>
+        <p>El archivo <code>main.tf</code> en la raíz del proyecto usará los módulos. Su contenido será:</p>
+        <pre><code>
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "rg" {
+  name     = "consolidated-lab-rg"
+  location = "East US"
+}
+
+module "eventhub" {
+  source              = "./modules/eventhub"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+}
+
+module "servicebus" {
+  source              = "./modules/servicebus"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+}
+
+module "eventgrid" {
+  source              = "./modules/eventgrid"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+}
+        </code></pre>
+
+        <h2>3. Creación de Módulos</h2>
+        <p>Ahora, crea cada módulo de la siguiente manera:</p>
+
+        <h3>3.1 Módulo de Event Hub</h3>
+        <p>Crea la carpeta <code>modules/eventhub</code> y dentro, los siguientes archivos:</p>
+        <ul>
+            <li>main.tf:</li>
+            <pre><code>
+variable "resource_group_name" {}
+variable "location" {}
+
+resource "azurerm_eventhub_namespace" "namespace" {
+  name                = "eventhub-namespace"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  sku                 = "Standard"
+}
+
+resource "azurerm_eventhub" "eventhub" {
+  name                = "eventhub-instance"
+  namespace_name      = azurerm_eventhub_namespace.namespace.name
+  resource_group_name = var.resource_group_name
+  partition_count     = 2
+  message_retention   = 1
+}
+            </code></pre>
+
+            <li>variables.tf:</li>
+            <pre><code>
+variable "resource_group_name" {
+  type = string
+}
+
+variable "location" {
+  type = string
+}
+            </code></pre>
+
+            <li>outputs.tf:</li>
+            <pre><code>
+output "eventhub_namespace_id" {
+  value = azurerm_eventhub_namespace.namespace.id
+}
+output "eventhub_id" {
+  value = azurerm_eventhub.eventhub.id
+}
+            </code></pre>
+        </ul>
+
+        <h3>3.2 Módulo de Service Bus</h3>
+        <p>Crea la carpeta <code>modules/servicebus</code> y dentro, los siguientes archivos:</p>
+        <ul>
+            <li>main.tf:</li>
+            <pre><code>
+variable "resource_group_name" {}
+variable "location" {}
+
+resource "azurerm_servicebus_namespace" "namespace" {
+  name                = "servicebus-namespace"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  sku                 = "Standard"
+}
+
+resource "azurerm_servicebus_queue" "queue" {
+  name                = "servicebus-queue"
+  namespace_name      = azurerm_servicebus_namespace.namespace.name
+  resource_group_name = var.resource_group_name
+  enable_partitioning = true
+}
+            </code></pre>
+
+            <li>variables.tf:</li>
+            <pre><code>
+variable "resource_group_name" {
+  type = string
+}
+
+variable "location" {
+  type = string
+}
+            </code></pre>
+
+            <li>outputs.tf:</li>
+            <pre><code>
+output "servicebus_namespace_id" {
+  value = azurerm_servicebus_namespace.namespace.id
+}
+output "servicebus_queue_id" {
+  value = azurerm_servicebus_queue.queue.id
+}
+            </code></pre>
+        </ul>
+
+        <h3>3.3 Módulo de Event Grid</h3>
+        <p>Crea la carpeta <code>modules/eventgrid</code> y dentro, los siguientes archivos:</p>
+        <ul>
+            <li>main.tf:</li>
+            <pre><code>
+variable "resource_group_name" {}
+variable "location" {}
+
+resource "azurerm_eventgrid_topic" "topic" {
+  name                = "eventgrid-topic"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+            </code></pre>
+
+            <li>variables.tf:</li>
+            <pre><code>
+variable "resource_group_name" {
+  type = string
+}
+
+variable "location" {
+  type = string
+}
+            </code></pre>
+
+            <li>outputs.tf:</li>
+            <pre><code>
+output "eventgrid_topic_id" {
+  value = azurerm_eventgrid_topic.topic.id
+}
+            </code></pre>
+        </ul>
+
+        <h2>4. Ejecución</h2>
+        <ol>
+            <li>Inicializar Terraform:
+                <pre><code>terraform init</code></pre>
+            </li>
+            <li>Planificar y aplicar los cambios:
+                <pre><code>terraform plan<br>terraform apply</code></pre>
+                <p>Escribe <code>yes</code> cuando se te solicite confirmación.</p>
+            </li>
+            <li>Verificar los recursos en el portal de Azure.</li>
+        </ol>
+    </div>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio: Azure API Management con Terraform</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        h1, h2 { color: #333; }
+        pre { background: #272822; color: #f8f8f2; padding: 10px; border-radius: 8px; overflow-x: auto; }
+        code { color: #f8f8f2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Laboratorio: Azure API Management con Terraform</h1>
+        <p>Este laboratorio te guiará en la creación de una instancia de Azure API Management con Terraform.</p>
+        
+        <h2>Prerrequisitos</h2>
+        <ul>
+            <li>Tener una cuenta de Azure activa.</li>
+            <li>Instalar Terraform (<a href="https://www.terraform.io/downloads.html" target="_blank">Descargar Terraform</a>).</li>
+            <li>Instalar Azure CLI (<a href="https://learn.microsoft.com/en-us/cli/azure/install-azure-cli" target="_blank">Descargar Azure CLI</a>).</li>
+        </ul>
+
+        <h2>Pasos</h2>
+        <ol>
+            <li><strong>Crear el directorio del proyecto:</strong>
+                <pre><code>mkdir api-management-lab &amp;&amp; cd api-management-lab</code></pre>
+            </li>
+            <li><strong>Crear el archivo principal <code>main.tf</code>:</strong>
+                <p>Crea un archivo llamado <code>main.tf</code> con el siguiente contenido:</p>
+                <pre><code>
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "rg" {
+  name     = "apim-lab-rg"
+  location = "East US"
+}
+
+resource "azurerm_api_management" "apim" {
+  name                = "apim-lab-instance"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  publisher_name      = "publisher@example.com"
+  publisher_email     = "publisher@example.com"
+  sku {
+    name     = "Developer"
+    capacity = 1
+  }
+}
+
+resource "azurerm_api_management_api" "api" {
+  name                = "example-api"
+  resource_group_name = azurerm_resource_group.rg.name
+  api_management_name = azurerm_api_management.apim.name
+  revision            = "1"
+  display_name        = "Example API"
+  path                = "example"
+  protocols           = ["https"]
+
+  import {
+    content_format = "swagger-link-json"
+    content_value  = "https://petstore.swagger.io/v2/swagger.json"
+  }
+}
+                </code></pre>
+            </li>
+            <li><strong>Explicación del Código:</strong></li>
+            <ul>
+                <li><code>azurerm_api_management</code>: Crea una instancia de Azure API Management con SKU "Developer".</li>
+                <li><code>azurerm_api_management_api</code>: Importa una API de ejemplo desde Swagger.</li>
+            </ul>
+            <li><strong>Inicializar Terraform:</strong>
+                <pre><code>terraform init</code></pre>
+            </li>
+            <li><strong>Planificar e implementar la infraestructura:</strong>
+                <pre><code>terraform plan<br>terraform apply</code></pre>
+                <p>Escribe <code>yes</code> cuando se te solicite confirmar la implementación.</p>
+            </li>
+            <li><strong>Probar la API:</strong>
+                <p>Accede al portal de Azure, ve a tu instancia de API Management, y navega al portal del desarrollador para probar la API.</p>
+            </li>
+            <li><strong>Opcional: Destruir los recursos creados:</strong>
+                <pre><code>terraform destroy</code></pre>
+                <p>Escribe <code>yes</code> para confirmar.</p>
+            </li>
+        </ol>
+
+        <h2>Notas Adicionales</h2>
+        <ul>
+            <li>Este laboratorio usa el SKU "Developer", adecuado para entornos de prueba. Cambia a un SKU "Basic" o superior para producción.</li>
+            <li>La API de ejemplo utiliza Swagger. Puedes reemplazar el enlace por tu propio archivo Swagger o OpenAPI.</li>
+        </ul>
+    </div>
+</body>
+</html>

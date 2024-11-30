@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio: Máquina Virtual en Azure con Estado Remoto</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        code {
+            background: #e8e8e8;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 1.1em;
+            color: #000;
+        }
+        pre {
+            background: #272822;
+            color: #f8f8f2;
+            padding: 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        pre code {
+            color: #f8f8f2;
+            background: none;
+        }
+        .steps {
+            list-style: decimal inside;
+        }
+        .steps li {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Laboratorio: Máquina Virtual en Azure con Estado Remoto</h1>
+        <p>En este laboratorio, aprenderás a crear una máquina virtual utilizando módulos de Terraform y almacenar el archivo de estado remoto (<code>tfstate</code>) en un Azure Storage Account.</p>
+
+        <h2>Prerrequisitos</h2>
+        <ul>
+            <li>Cuenta de Azure activa.</li>
+            <li>Terraform instalado (<a href="https://www.terraform.io/downloads.html" target="_blank">Descargar Terraform</a>).</li>
+            <li>Azure CLI instalado (<a href="https://docs.microsoft.com/en-us/cli/azure/install-azure-cli" target="_blank">Descargar Azure CLI</a>).</li>
+        </ul>
+
+        <h2>Configuración del Estado Remoto</h2>
+        <ol class="steps">
+            <li><strong>Crear un Storage Account y un contenedor para el estado remoto:</strong><br>
+                <pre><code>az group create --name tfstate-rg --location eastus
+az storage account create --name tfstatestorage123 --resource-group tfstate-rg --location eastus --sku Standard_LRS
+az storage container create --name tfstate --account-name tfstatestorage123</code></pre>
+                <p>Asegúrate de guardar la clave de acceso al Storage Account:</p>
+                <pre><code>az storage account keys list --account-name tfstatestorage123 --query "[0].value" --output tsv</code></pre>
+            </li>
+        </ol>
+
+        <h2>Pasos</h2>
+        <ol class="steps">
+            <li><strong>Crear un directorio de trabajo:</strong><br>
+                <pre><code>mkdir terraform-vm-lab<br>cd terraform-vm-lab</code></pre>
+            </li>
+            <li><strong>Crear archivos de Terraform:</strong><br>
+                <ul>
+                    <li><code>main.tf</code>: Configuración principal.</li>
+                    <li><code>variables.tf</code>: Declaración de variables.</li>
+                    <li><code>terraform.tfvars</code>: Valores de las variables.</li>
+                    <li><code>network_module/main.tf</code>: Configuración del módulo de red.</li>
+                    <li><code>vm_module/main.tf</code>: Configuración del módulo de VM.</li>
+                </ul>
+            </li>
+            <li><strong>Agregar configuración de estado remoto a <code>main.tf</code>:</strong>
+                <pre><code>
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "tfstate-rg"
+    storage_account_name = "tfstatestorage123"
+    container_name       = "tfstate"
+    key                  = "terraform.tfstate"
+  }
+}
+
+provider "azurerm" {
+  features {}
+}
+                </code></pre>
+            </li>
+            <li><strong>Agregar contenido al módulo de red (<code>network_module/main.tf</code>):</strong>
+                <pre><code>
+resource "azurerm_virtual_network" "vnet" {
+  name                = var.vnet_name
+  address_space       = var.address_space
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_subnet" "subnet" {
+  name                 = var.subnet_name
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = var.subnet_address_prefixes
+}
+                </code></pre>
+            </li>
+            <li><strong>Agregar contenido al módulo de VM (<code>vm_module/main.tf</code>):</strong>
+                <pre><code>
+resource "azurerm_network_interface" "nic" {
+  name                = var.nic_name
+  location            = var.location
+  resource_group_name = var.resource_group_name
+
+  ip_configuration {
+    name                          = "ipconfig1"
+    subnet_id                     = var.subnet_id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+resource "azurerm_linux_virtual_machine" "vm" {
+  name                  = var.vm_name
+  location              = var.location
+  resource_group_name   = var.resource_group_name
+  network_interface_ids = [azurerm_network_interface.nic.id]
+  size                  = var.vm_size
+
+  admin_username = var.admin_username
+  admin_password = var.admin_password
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "18.04-LTS"
+    version   = "latest"
+  }
+}
+                </code></pre>
+            </li>
+            <li><strong>Agregar variables (<code>variables.tf</code>):</strong>
+                <pre><code>
+variable "resource_group_name" {}
+variable "location" {}
+variable "vnet_name" {}
+variable "address_space" {}
+variable "subnet_name" {}
+variable "subnet_address_prefixes" {}
+variable "nic_name" {}
+variable "vm_name" {}
+variable "vm_size" {}
+variable "admin_username" {}
+variable "admin_password" {}
+                </code></pre>
+            </li>
+            <li><strong>Valores en <code>terraform.tfvars</code>:</strong>
+                <pre><code>
+resource_group_name       = "vm-lab-rg"
+location                  = "East US"
+vnet_name                 = "lab-vnet"
+address_space             = ["10.0.0.0/16"]
+subnet_name               = "lab-subnet"
+subnet_address_prefixes   = ["10.0.1.0/24"]
+nic_name                  = "lab-nic"
+vm_name                   = "lab-vm"
+vm_size                   = "Standard_B1s"
+admin_username            = "azureuser"
+admin_password            = "StrongP@ssw0rd!"
+                </code></pre>
+            </li>
+            <li><strong>Inicializar y aplicar:</strong><br>
+                <pre><code>terraform init<br>terraform apply</code></pre>
+                <p>Confirma la ejecución para crear los recursos en Azure.</p>
+            </li>
+        </ol>
+
+        <h2>Resultado</h2>
+        <p>Al finalizar, tendrás:</p>
+        <ul>
+            <li>Un grupo de recursos con una red virtual y una subred.</li>
+            <li>Una máquina virtual con interfaz de red asociada.</li>
+            <li>El archivo de estado remoto almacenado de forma segura en un Azure Storage Account.</li>
+        </ul>
+    </div>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio de Azure Logic Apps con Terraform</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        code {
+            background: #e8e8e8;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 1.1em;
+            color: #000;
+        }
+        pre {
+            background: #272822;
+            color: #f8f8f2;
+            padding: 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        pre code {
+            color: #f8f8f2;
+            background: none;
+        }
+        .steps {
+            list-style: decimal inside;
+        }
+        .steps li {
+            margin-bottom: 15px;
+        }
+        .steps li strong {
+            background: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Laboratorio de Azure Logic Apps con Terraform</h1>
+        <p>Este laboratorio te guiará para implementar una Azure Logic App que recibe datos de una solicitud HTTP y los almacena en Azure Blob Storage.</p>
+
+        <h2>Prerrequisitos</h2>
+        <ul>
+            <li>Tener una cuenta de Azure.</li>
+            <li>Instalar <a href="https://www.terraform.io/downloads.html" target="_blank">Terraform</a>.</li>
+            <li>Instalar <a href="https://learn.microsoft.com/en-us/cli/azure/install-azure-cli" target="_blank">Azure CLI</a>.</li>
+        </ul>
+
+        <h2>Pasos</h2>
+        <ol class="steps">
+            <li><strong>Preparar el entorno:</strong>
+                <pre><code>mkdir logic-apps-terraform<br>cd logic-apps-terraform</code></pre>
+            </li>
+            <li><strong>Crear el archivo principal de Terraform:</strong>
+                <pre><code>touch main.tf<br>nano main.tf</code></pre>
+                <p>Agrega el contenido que incluye la definición de la Logic App (ver sección anterior).</p>
+            </li>
+            <li><strong>Inicializar Terraform:</strong>
+                <pre><code>terraform init</code></pre>
+            </li>
+            <li><strong>Planificar la implementación:</strong>
+                <pre><code>terraform plan</code></pre>
+            </li>
+            <li><strong>Aplicar la configuración:</strong>
+                <pre><code>terraform apply</code></pre>
+                <p>Escribe <code>yes</code> para confirmar.</p>
+            </li>
+            <li><strong>Probar la Logic App:</strong>
+                <ol>
+                    <li>Después de implementar, Terraform mostrará la URL del desencadenador HTTP.</li>
+                    <li>Usa herramientas como <a href="https://www.postman.com/" target="_blank">Postman</a> o <code>curl</code> para enviar una solicitud POST con el siguiente formato:</li>
+                    <pre><code>
+curl -X POST -H "Content-Type: application/json" -d '{"name":"Juan"}' https://<URL-de-tu-logic-app>
+                    </code></pre>
+                    <p>Reemplaza <code>https://&lt;URL-de-tu-logic-app&gt;</code> con la URL proporcionada por Terraform. La URL se encuentra en los valores de salida o en la pestaña de la Logic App en el portal de Azure.</p>
+                </ol>
+            </li>
+            <li><strong>Verificar en Azure:</strong>
+                <p>Accede a tu cuenta de Azure Storage y verifica los blobs creados.</p>
+            </li>
+            <li><strong>Eliminar recursos:</strong> (opcional)
+                <pre><code>terraform destroy</code></pre>
+                <p>Escribe <code>yes</code> para confirmar.</p>
+            </li>
+        </ol>
+    </div>
+</body>
+</html>
